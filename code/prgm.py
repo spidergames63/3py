@@ -33,7 +33,7 @@ class App:
             eulers = [0,0,0]
         )
 
-        self.cube_mesh = Mesh("code/primitives/UVSphere.obj")
+        self.cube_mesh = Mesh("code/primitives/monke.obj")
 
         self.sample_texture = Material("code/textures/yellow tiles.jpg");
 
