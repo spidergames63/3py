@@ -7,8 +7,16 @@ to run, you need to have pygame, openGL, ctypes, pyrr, and numPy installed on yo
 
 you can easily install most of those libraries with the pip command on Windows or the I don't fucking know command on Linux
 
-CURRENT VERSION: P.F.1.1
+---
+HOW TO USE
+---
+
+Load primitives by editing the python script at line 36
+repalce the filepath with that of whatever obj file you want to load.
+Why not drop in your own!?
+
+CURRENT VERSION: P.F.1.2
 FEATURES:
--spinning cube
+-spinning obj files!!!
 
 (P.F. stands for pre-functional)

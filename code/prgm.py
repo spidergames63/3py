@@ -33,7 +33,7 @@ class App:
             eulers = [0,0,0]
         )
 
-        self.cube_mesh = CubeMesh()
+        self.cube_mesh = Mesh("code/primitives/UVSphere.obj")
 
         self.sample_texture = Material("code/textures/yellow tiles.jpg");
 
@@ -123,62 +123,14 @@ class App:
         glDeleteProgram(self.shader)
         pg.quit()
 
-class CubeMesh:
+class Mesh:
 
-    def __init__(self):
+    def __init__(self, filepath):
 
-        #X-Y-Z-U-V
-        self.vertices = (
-                -0.5, -0.5, -0.5, 0, 0,
-                 0.5, -0.5, -0.5, 1, 0,
-                 0.5,  0.5, -0.5, 1, 1,
+        #X-Y-Z-U-V-NX-NY-NZ
+        self.vertices = self.LoadMesh(filepath)
 
-                 0.5,  0.5, -0.5, 1, 1,
-                -0.5,  0.5, -0.5, 0, 1,
-                -0.5, -0.5, -0.5, 0, 0,
-
-                -0.5, -0.5,  0.5, 0, 0,
-                 0.5, -0.5,  0.5, 1, 0,
-                 0.5,  0.5,  0.5, 1, 1,
-
-                 0.5,  0.5,  0.5, 1, 1,
-                -0.5,  0.5,  0.5, 0, 1,
-                -0.5, -0.5,  0.5, 0, 0,
-
-                -0.5,  0.5,  0.5, 1, 0,
-                -0.5,  0.5, -0.5, 1, 1,
-                -0.5, -0.5, -0.5, 0, 1,
-
-                -0.5, -0.5, -0.5, 0, 1,
-                -0.5, -0.5,  0.5, 0, 0,
-                -0.5,  0.5,  0.5, 1, 0,
-
-                 0.5,  0.5,  0.5, 1, 0,
-                 0.5,  0.5, -0.5, 1, 1,
-                 0.5, -0.5, -0.5, 0, 1,
-
-                 0.5, -0.5, -0.5, 0, 1,
-                 0.5, -0.5,  0.5, 0, 0,
-                 0.5,  0.5,  0.5, 1, 0,
-
-                -0.5, -0.5, -0.5, 0, 1,
-                 0.5, -0.5, -0.5, 1, 1,
-                 0.5, -0.5,  0.5, 1, 0,
-
-                 0.5, -0.5,  0.5, 1, 0,
-                -0.5, -0.5,  0.5, 0, 0,
-                -0.5, -0.5, -0.5, 0, 1,
-
-                -0.5,  0.5, -0.5, 0, 1,
-                 0.5,  0.5, -0.5, 1, 1,
-                 0.5,  0.5,  0.5, 1, 0,
-
-                 0.5,  0.5,  0.5, 1, 0,
-                -0.5,  0.5,  0.5, 0, 0,
-                -0.5,  0.5, -0.5, 0, 1
-            )
-
-        self.vertex_count = len(self.vertices) // 5
+        self.vertex_count = len(self.vertices) // 8
 
         self.vertices = np.array(self.vertices, dtype=np.float32)
 
@@ -189,10 +141,85 @@ class CubeMesh:
         glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
         #pos
         glEnableVertexAttribArray(0)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
         #colour
         glEnableVertexAttribArray(1)
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(12))
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(12))
+
+    def LoadMesh(self, filepath):
+
+        #raw, unassembled data
+        v = []
+        vt = []
+        vn = []
+        
+        #final, assembled and packed result
+        vertices = []
+
+        #open the obj file and read the data
+        with open(filepath,'r') as f:
+            line = f.readline()
+            while line:
+                firstSpace = line.find(" ")
+                flag = line[0:firstSpace]
+                if flag=="v":
+                    #vertex
+                    line = line.replace("v ","")
+                    line = line.split(" ")
+                    l = [float(x) for x in line]
+                    v.append(l)
+                elif flag=="vt":
+                    #texture coordinate
+                    line = line.replace("vt ","")
+                    line = line.split(" ")
+                    l = [float(x) for x in line]
+                    vt.append(l)
+                elif flag=="vn":
+                    #normal
+                    line = line.replace("vn ","")
+                    line = line.split(" ")
+                    l = [float(x) for x in line]
+                    vn.append(l)
+                elif flag=="f":
+                    #face, three or more vertices in v/vt/vn form
+                    line = line.replace("f ","")
+                    line = line.replace("\n","")
+                    #get the individual vertices for each line
+                    line = line.split(" ")
+                    faceVertices = []
+                    faceTextures = []
+                    faceNormals = []
+                    for vertex in line:
+                        #break out into [v,vt,vn],
+                        #correct for 0 based indexing.
+                        l = vertex.split("/")
+                        position = int(l[0]) - 1
+                        faceVertices.append(v[position])
+                        texture = int(l[1]) - 1
+                        faceTextures.append(vt[texture])
+                        normal = int(l[2]) - 1
+                        faceNormals.append(vn[normal])
+                    # obj file uses triangle fan format for each face individually.
+                    # unpack each face
+                    triangles_in_face = len(line) - 2
+
+                    vertex_order = []
+                    """
+                        eg. 0,1,2,3 unpacks to vertices: [0,1,2,0,2,3]
+                    """
+                    for i in range(triangles_in_face):
+                        vertex_order.append(0)
+                        vertex_order.append(i+1)
+                        vertex_order.append(i+2)
+                    for i in vertex_order:
+                        for x in faceVertices[i]:
+                            vertices.append(x)
+                        for x in faceTextures[i]:
+                            vertices.append(x)
+                        for x in faceNormals[i]:
+                            vertices.append(x)
+                line = f.readline()
+        return vertices
 
     def destroy(self):
 
